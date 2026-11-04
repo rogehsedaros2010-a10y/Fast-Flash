@@ -39,7 +39,7 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm text-slate-300 mb-2">ضع رابط الفيديو أو الصورة هنا:</label>
-                    <input type="url" id="mediaUrl" placeholder="https://example.com/image.jpg أو رابط فيديو..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-cyan-500 transition">
+                    <input type="url" id="mediaUrl" placeholder="https://example.com/video.mp4" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-cyan-500 transition">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -69,7 +69,7 @@
             <!-- Loading Progress -->
             <div id="loadingBox" class="mt-6 hidden space-y-2">
                 <div class="flex justify-between text-xs text-slate-400">
-                    <span id="statusText">جاري تجهيز الملف للتنزيل المباشر...</span>
+                    <span id="statusText">جاري المعالجة واستخراج الفيديو...</span>
                     <span id="progressText">0%</span>
                 </div>
                 <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
@@ -77,12 +77,20 @@
                 </div>
             </div>
 
-            <!-- Result Box -->
-            <div id="resultBox" class="mt-6 hidden p-4 bg-slate-950 border border-cyan-500/30 rounded-xl text-center space-y-3">
-                <p class="text-emerald-400 text-sm font-semibold">✨ الملف جاهز للتنزيل المباشر على جهازك!</p>
-                <button onclick="downloadDirectly()" class="inline-block bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-md hover:opacity-90 transition cursor-pointer">
-                    ⬇️ حفظ الملف على جهازك الآن
-                </button>
+            <!-- Media Preview & Download Tab -->
+            <div id="resultBox" class="mt-6 hidden p-4 bg-slate-950 border border-cyan-500/30 rounded-xl text-center space-y-4">
+                <p class="text-emerald-400 text-sm font-semibold">✨ تم تجهيز الفيديو! يمكنك المشاهدة أو التنزيل مباشرة:</p>
+                
+                <!-- تبويب الفيديو المعروض داخل الصفحة -->
+                <div class="rounded-xl overflow-hidden bg-black border border-slate-800">
+                    <video id="videoPreview" controls class="w-full max-h-80 mx-auto hidden"></video>
+                    <img id="imagePreview" class="w-full max-h-80 object-contain mx-auto hidden" alt="Preview">
+                </div>
+
+                <!-- زر التحميل المباشر للجهاز -->
+                <a id="downloadAnchor" href="#" download target="_blank" class="w-full inline-flex justify-center items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 px-6 rounded-xl text-sm shadow-lg hover:opacity-90 transition cursor-pointer">
+                    <span>📥 اضغط هنا لحفظ الملف مباشرة على جهازك</span>
+                </a>
             </div>
         </div>
     </main>
@@ -105,7 +113,7 @@
         function startProcessing() {
             currentUrl = document.getElementById('mediaUrl').value.trim();
             if (!currentUrl) {
-                alert('الرجاء إدخال رابط صحيحي أولاً!');
+                alert('الرجاء إدخال رابط صحيح أولاً!');
                 return;
             }
 
@@ -113,15 +121,22 @@
             const resultBox = document.getElementById('resultBox');
             const progressBar = document.getElementById('progressBar');
             const progressText = document.getElementById('progressText');
+            
+            const videoPreview = document.getElementById('videoPreview');
+            const imagePreview = document.getElementById('imagePreview');
+            const downloadAnchor = document.getElementById('downloadAnchor');
 
             resultBox.classList.add('hidden');
+            videoPreview.classList.add('hidden');
+            imagePreview.classList.add('hidden');
+            
             loadingBox.classList.remove('hidden');
             progressBar.style.width = '0%';
             progressText.innerText = '0%';
 
             let progress = 0;
             const interval = setInterval(() => {
-                progress += 20;
+                progress += 25;
                 progressBar.style.width = progress + '%';
                 progressText.innerText = progress + '%';
 
@@ -129,43 +144,21 @@
                     clearInterval(interval);
                     loadingBox.classList.add('hidden');
                     resultBox.classList.remove('hidden');
+
+                    // فحص نوع الرابط لإظهاره للمستخدم (فيديو أو صورة)
+                    if (currentUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+                        imagePreview.src = currentUrl;
+                        imagePreview.classList.remove('hidden');
+                    } else {
+                        videoPreview.src = currentUrl;
+                        videoPreview.classList.remove('hidden');
+                    }
+
+                    // تجهيز رابط التحميل الحقيقي مع خاصية التنزيل المباشر
+                    downloadAnchor.href = currentUrl;
+                    downloadAnchor.setAttribute('download', 'FastFlash_Media');
                 }
             }, 250);
-        }
-
-        // التنزيل المباشر للحاسوب/الموبايل بدلاً من فتح صفحة جديدة
-        async function downloadDirectly() {
-            try {
-                const response = await fetch(currentUrl);
-                const blob = await response.blob();
-                
-                // إنشاء رابط تنزيل وهمي في خلفية المتصفح
-                const blobUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = blobUrl;
-                
-                // تسمية الملف المحمل باسم Fast Flash
-                const extension = currentUrl.split('.').pop().substring(0, 4) || 'mp4';
-                a.download = `FastFlash_Media_${Date.now()}.${extension}`;
-                
-                document.body.appendChild(a);
-                a.click();
-                
-                // تنظيف الرابط بعد التنزيل
-                window.URL.revokeObjectURL(blobUrl);
-                a.remove();
-                alert('بدأ التحميل والحفظ على جهازك الآن!');
-            } catch (error) {
-                // في حال كان الرابط محمي بسيرفرات الحماية الخارجية (CORS)
-                const a = document.createElement('a');
-                a.href = currentUrl;
-                a.download = 'FastFlash_Media';
-                a.target = '_blank';
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            }
         }
     </script>
 </body>

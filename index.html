@@ -39,7 +39,7 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm text-slate-300 mb-2">ضع رابط الفيديو أو الصورة هنا:</label>
-                    <input type="url" id="mediaUrl" placeholder="https://www.youtube.com/watch?v=..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-cyan-500 transition">
+                    <input type="url" id="mediaUrl" placeholder="https://example.com/image.jpg أو رابط فيديو..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-cyan-500 transition">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -69,7 +69,7 @@
             <!-- Loading Progress -->
             <div id="loadingBox" class="mt-6 hidden space-y-2">
                 <div class="flex justify-between text-xs text-slate-400">
-                    <span>جاري استخراج واستخراج رابط التحميل المباشر...</span>
+                    <span id="statusText">جاري تجهيز الملف للتنزيل المباشر...</span>
                     <span id="progressText">0%</span>
                 </div>
                 <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
@@ -79,10 +79,10 @@
 
             <!-- Result Box -->
             <div id="resultBox" class="mt-6 hidden p-4 bg-slate-950 border border-cyan-500/30 rounded-xl text-center space-y-3">
-                <p class="text-emerald-400 text-sm font-semibold">✨ تم استخراج الملف بنجاح!</p>
-                <a id="finalDownloadLink" href="#" target="_blank" download class="inline-block bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-md hover:opacity-90 transition">
-                    ⬇️ اضغط هنا لتنزيل الملف الآن
-                </a>
+                <p class="text-emerald-400 text-sm font-semibold">✨ الملف جاهز للتنزيل المباشر على جهازك!</p>
+                <button onclick="downloadDirectly()" class="inline-block bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-md hover:opacity-90 transition cursor-pointer">
+                    ⬇️ حفظ الملف على جهازك الآن
+                </button>
             </div>
         </div>
     </main>
@@ -93,6 +93,8 @@
     </footer>
 
     <script>
+        let currentUrl = '';
+
         function handleLogin() {
             const btn = document.getElementById('loginBtn');
             btn.innerText = 'مرحباً بك (مستخدم Fast Flash)';
@@ -101,9 +103,9 @@
         }
 
         function startProcessing() {
-            const urlInput = document.getElementById('mediaUrl').value.trim();
-            if (!urlInput) {
-                alert('الرجاء إدخال رابط فيديو أو صورة صحيح أولاً!');
+            currentUrl = document.getElementById('mediaUrl').value.trim();
+            if (!currentUrl) {
+                alert('الرجاء إدخال رابط صحيحي أولاً!');
                 return;
             }
 
@@ -111,7 +113,6 @@
             const resultBox = document.getElementById('resultBox');
             const progressBar = document.getElementById('progressBar');
             const progressText = document.getElementById('progressText');
-            const finalLink = document.getElementById('finalDownloadLink');
 
             resultBox.classList.add('hidden');
             loadingBox.classList.remove('hidden');
@@ -120,7 +121,7 @@
 
             let progress = 0;
             const interval = setInterval(() => {
-                progress += 25;
+                progress += 20;
                 progressBar.style.width = progress + '%';
                 progressText.innerText = progress + '%';
 
@@ -128,11 +129,43 @@
                     clearInterval(interval);
                     loadingBox.classList.add('hidden');
                     resultBox.classList.remove('hidden');
-
-                    // توجيه الرابط لبوابة استخراج الميديا المباشرة
-                    finalLink.href = 'https://cobalt.tools/?url=' + encodeURIComponent(urlInput);
                 }
-            }, 300);
+            }, 250);
+        }
+
+        // التنزيل المباشر للحاسوب/الموبايل بدلاً من فتح صفحة جديدة
+        async function downloadDirectly() {
+            try {
+                const response = await fetch(currentUrl);
+                const blob = await response.blob();
+                
+                // إنشاء رابط تنزيل وهمي في خلفية المتصفح
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                
+                // تسمية الملف المحمل باسم Fast Flash
+                const extension = currentUrl.split('.').pop().substring(0, 4) || 'mp4';
+                a.download = `FastFlash_Media_${Date.now()}.${extension}`;
+                
+                document.body.appendChild(a);
+                a.click();
+                
+                // تنظيف الرابط بعد التنزيل
+                window.URL.revokeObjectURL(blobUrl);
+                a.remove();
+                alert('بدأ التحميل والحفظ على جهازك الآن!');
+            } catch (error) {
+                // في حال كان الرابط محمي بسيرفرات الحماية الخارجية (CORS)
+                const a = document.createElement('a');
+                a.href = currentUrl;
+                a.download = 'FastFlash_Media';
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }
         }
     </script>
 </body>
